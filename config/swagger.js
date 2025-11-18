@@ -23,11 +23,7 @@ const options = {
         description: 'Development server'
       },
       {
-        url: 'https://e-com-backend-m68j.onrender.com/api',
-        description: 'Production server'
-      },
-      {
-        url: 'https://e-com-backend-m68j.onrender.com/api',
+        url: 'https://ginoid-gin-backend.onrender.com/api',
         description: 'Production server'
       },
       {
