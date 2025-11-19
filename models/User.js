@@ -34,6 +34,14 @@ const userSchema = new mongoose.Schema({
     enum: ['user', 'admin', 'agent'],
     default: 'user'
   },
+  subscription: {
+    amount: {
+      type: Number,
+      default: 0},
+    dateSubscribed: {
+      type: Date,
+      default: null}
+  },
   isActive: {
     type: Boolean,
     default: true
