@@ -86,29 +86,7 @@ const createCustomer = async ({ email, first_name, last_name, phone }) => {
 //   return response.data.data;
 // };
 
-/**
- * Assign a Dedicated Virtual Account to customer
- * @param {string} customer_code - Paystack customer_code
- * @param {string} preferred_bank - 'wema-bank' by default
- */
-// const assignDedicatedAccount = async (customer_code, preferred_bank = 'wema-bank') => {
-//   const response = await paystack.post('/dedicated_account', {
-//     customer: customer_code,
-//     preferred_bank
-//   });
 
-//   return response.data.data;
-// };
-
-// const verifyBankAccount= async (bankCode,accountNumber )=>{
-//     const response = await paystack.post(`/bank/resolve`, {
-//         params:{
-//             account_number: accountNumber,
-//             bank_code: bankCode
-//         }
-//     });
-//     return response.data.data;
-// }
 
 const getAllowedBanks = async (country = 'nigeria') => {
     const key = `supported_${country}_banks`;
@@ -132,33 +110,7 @@ const getAllowedBanks = async (country = 'nigeria') => {
     return JSON.parse(cached);
 };
 
-// const createTransferRecipient = async (type, name, account_number, bank_code, currency, user) => {
-//     if (!user || !user._id || !user.email) {
-//       throw new Error('Invalid user object');
-//     }
-  
-//     try {
-//       const response = await paystack.post('/transferrecipient', {
-//         type, // e.g. "nuban"
-//         name,
-//         account_number,
-//         bank_code,
-//         currency, // e.g. "NGN"
-//         description: 'User payout/withdrawal',
-//         metadata: {
-//           userId: user._id,
-//           email: user.email,
-//           first_name: user.firstName || '',
-//           last_name: user.lastName || ''
-//         }
-//       });
-  
-//       return response.data?.data;
-//     } catch (error) {
-//       console.error('Error creating transfer recipient:', error?.response?.data || error.message);
-//       throw new Error('Failed to create transfer recipient');
-//     }
-//   };
+
 
 /**
  * Manually check Paystack transaction status by reference
