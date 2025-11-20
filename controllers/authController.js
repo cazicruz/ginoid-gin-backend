@@ -16,7 +16,7 @@ const catchAsync = require('../utils/catchAsync');
 // @route   POST /api/auth/register
 // @access  Public
 const register = catchAsync(async (req, res, next) => {
-  const { email, phone, password, firstName,lastName, referralCode} = req.body;
+  const { email, phone, password, firstName, lastName, referralCode } = req.body;
   const deviceInfo = req.headers['user-agent'];
   const ip = req.ip;
 
@@ -61,58 +61,62 @@ const register = catchAsync(async (req, res, next) => {
   // Remove password from response
   const userResponse = user.toObject();
   delete userResponse.password;
-await sendEmail(
-  userResponse.email,
-  'Welcome to Gin by Ginoid ✨',
-  null,
-  `
-  <div style="font-family: Arial, sans-serif; color:#222; padding:20px; background:#fafafa;">
-    <table width="100%" cellspacing="0" cellpadding="0" style="max-width:600px; margin:auto; background:#ffffff; border-radius:8px; padding:30px;">
-      <tr>
-        <td align="center" style="padding-bottom:20px;">
-          <h2 style="margin:0; font-size:22px; font-weight:700; color:#000;">
-            Welcome to Gin by Ginoid, ${user.fullName.toUpperCase()}!
-          </h2>
-        </td>
-      </tr>
 
-      <tr>
-        <td style="font-size:15px; line-height:1.6; color:#444;">
-          <p>We’re thrilled to welcome you to the B-Classy family!</p>
-          <p>Beauty isn’t just a look — it's a lifestyle, and you're now part of a community that believes in elegance, confidence, and premium hair care experiences tailored for you.</p>
-        </td>
-      </tr>
+  // Construct full name for email
+  const fullName = `${user.firstName} ${user.lastName}`;
 
-      <tr>
-        <td style="padding-top:20px;">
-          <p style="font-size:15px; font-weight:600; margin-bottom:10px; color:#2d3748;">
-            What comes next:
-          </p>
+  await sendEmail(
+    userResponse.email,
+    'Welcome to Gin by Ginoid ✨',
+    null,
+    `
+    <div style="font-family: Arial, sans-serif; color:#222; padding:20px; background:#fafafa;">
+      <table width="100%" cellspacing="0" cellpadding="0" style="max-width:600px; margin:auto; background:#ffffff; border-radius:8px; padding:30px;">
+        <tr>
+          <td align="center" style="padding-bottom:20px;">
+            <h2 style="margin:0; font-size:22px; font-weight:700; color:#000;">
+              Welcome to Gin by Ginoid, ${fullName.toUpperCase()}!
+            </h2>
+          </td>
+        </tr>
 
-          <p style="font-size:14px; line-height:1.6; color:#666;">
-            • Early access to premium hair products <br/>
-            • Styling tips & beauty inspiration <br/>
-            • VIP alerts for special offers and events <br/>
-          </p>
-        </td>
-      </tr>
+        <tr>
+          <td style="font-size:15px; line-height:1.6; color:#444;">
+            <p>We're thrilled to welcome you to the Gin by Ginoid family!</p>
+            <p>Beauty isn't just a look — it's a lifestyle, and you're now part of a community that believes in elegance, confidence, and premium hair care experiences tailored for you.</p>
+          </td>
+        </tr>
 
-      <tr>
-        <td style="padding-top:25px; font-size:14px; color:#666;">
-          <p>We can’t wait to bring out your finest look yet.</p>
-          <p>Welcome once again — stay classy, stay beautiful.</p>
-        </td>
-      </tr>
+        <tr>
+          <td style="padding-top:20px;">
+            <p style="font-size:15px; font-weight:600; margin-bottom:10px; color:#2d3748;">
+              What comes next:
+            </p>
 
-      <tr>
-        <td style="font-size:13px; line-height:1.6; color:#888; padding-top:25px; border-top:1px solid #eee;">
-          <p style="margin:0;">With grace & glamour,<br><strong>Gin by Ginoid Team</strong></p>
-        </td>
-      </tr>
-    </table>
-  </div>
-  `
-);
+            <p style="font-size:14px; line-height:1.6; color:#666;">
+              • Early access to premium hair products <br/>
+              • Styling tips & beauty inspiration <br/>
+              • VIP alerts for special offers and events <br/>
+            </p>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding-top:25px; font-size:14px; color:#666;">
+            <p>We can't wait to bring out your finest look yet.</p>
+            <p>Welcome once again — stay classy, stay beautiful.</p>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="font-size:13px; line-height:1.6; color:#888; padding-top:25px; border-top:1px solid #eee;">
+            <p style="margin:0;">With grace & glamour,<br/><strong>Gin by Ginoid Team</strong></p>
+          </td>
+        </tr>
+      </table>
+    </div>
+    `
+  );
 
   res.cookie('refreshToken', token.refreshToken, {
     httpOnly: true,
