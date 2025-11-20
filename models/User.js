@@ -195,7 +195,7 @@ userSchema.statics.findByCredentials = async function(email, password) {
   const user = await this.findOne({ email }).select('+password');
   
   if (!user) {
-    throw new ApiError('Invalid login credentials',401,'INVALID_CREDENTIALS');
+    throw new ApiError('Invalid login credentials',401,'  USER NOT FOUND');
   }
   
   if (user.isLocked()) {
