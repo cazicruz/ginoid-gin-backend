@@ -138,6 +138,7 @@ const login = catchAsync(async (req, res, next) => {
   const { email, password } = req.body;
   const deviceInfo = req.headers['user-agent'];
   const ip = req.ip;
+  console.log('Login attempt:', { email,password, deviceInfo, ip });
 
   // Find user by credentials
   const user = await User.findByCredentials(email, password);
