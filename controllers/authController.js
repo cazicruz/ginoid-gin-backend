@@ -20,119 +20,153 @@ const register = catchAsync(async (req, res, next) => {
   const deviceInfo = req.headers['user-agent'];
   const ip = req.ip;
 
-  // Check if user already exists
-  const existingUser = await User.findOne({
-    $or: [{ email }, { phone }]
-  });
+  // Start a session for transaction
+  const session = await mongoose.startSession();
+  
+  try {
+    // Start transaction
+    await session.startTransaction();
 
-  if (existingUser) {
-    throw apiError(existingUser.email === email 
-      ? 'Email already registered' 
-      : 'Phone number already registered', 400);
-  }
+    // Check if user already exists
+    const existingUser = await User.findOne({
+      $or: [{ email }, { phone }]
+    }).session(session);
 
-  // Check referral code if provided
-  let referredBy = null;
-  if (referralCode) {
-    const referrer = await User.findOne({ referralCode });
-    if (referrer) {
-      referredBy = referrer._id;
+    if (existingUser) {
+      throw apiError(existingUser.email === email 
+        ? 'Email already registered' 
+        : 'Phone number already registered', 400);
     }
-  }
 
-  // Generate unique referral code
-  const newReferralCode = `REF${Date.now()}${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
-
-  // Create new user
-  const user = new User({
-    email,
-    phone,
-    password,
-    firstName,
-    lastName,
-    referralCode: newReferralCode,
-    referredBy
-  });
-
-  await user.save();
-  const session = await createOrUpdateSession({ userId: user._id, deviceInfo, ip });
-  const token = await generateTokens(user, deviceInfo);
-
-  // Remove password from response
-  const userResponse = user.toObject();
-  delete userResponse.password;
-
-  // Construct full name for email
-  const fullName = `${user.firstName} ${user.lastName}`;
-
-  await sendEmail(
-    userResponse.email,
-    'Welcome to Gin by Ginoid ✨',
-    null,
-    `
-    <div style="font-family: Arial, sans-serif; color:#222; padding:20px; background:#fafafa;">
-      <table width="100%" cellspacing="0" cellpadding="0" style="max-width:600px; margin:auto; background:#ffffff; border-radius:8px; padding:30px;">
-        <tr>
-          <td align="center" style="padding-bottom:20px;">
-            <h2 style="margin:0; font-size:22px; font-weight:700; color:#000;">
-              Welcome to Gin by Ginoid, ${fullName.toUpperCase()}!
-            </h2>
-          </td>
-        </tr>
-
-        <tr>
-          <td style="font-size:15px; line-height:1.6; color:#444;">
-            <p>We're thrilled to welcome you to the Gin by Ginoid family!</p>
-            <p>Beauty isn't just a look — it's a lifestyle, and you're now part of a community that believes in elegance, confidence, and premium hair care experiences tailored for you.</p>
-          </td>
-        </tr>
-
-        <tr>
-          <td style="padding-top:20px;">
-            <p style="font-size:15px; font-weight:600; margin-bottom:10px; color:#2d3748;">
-              What comes next:
-            </p>
-
-            <p style="font-size:14px; line-height:1.6; color:#666;">
-              • Early access to premium hair products <br/>
-              • Styling tips & beauty inspiration <br/>
-              • VIP alerts for special offers and events <br/>
-            </p>
-          </td>
-        </tr>
-
-        <tr>
-          <td style="padding-top:25px; font-size:14px; color:#666;">
-            <p>We can't wait to bring out your finest look yet.</p>
-            <p>Welcome once again — stay classy, stay beautiful.</p>
-          </td>
-        </tr>
-
-        <tr>
-          <td style="font-size:13px; line-height:1.6; color:#888; padding-top:25px; border-top:1px solid #eee;">
-            <p style="margin:0;">With grace & glamour,<br/><strong>Gin by Ginoid Team</strong></p>
-          </td>
-        </tr>
-      </table>
-    </div>
-    `
-  );
-
-  res.cookie('refreshToken', token.refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'Strict',
-    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-  });
-
-  res.status(201).json({
-    success: true,
-    message: 'User registered successfully',
-    data: {
-      user: userResponse,
-      token: token.accessToken,
+    // Check referral code if provided
+    let referredBy = null;
+    if (referralCode) {
+      const referrer = await User.findOne({ referralCode }).session(session);
+      if (referrer) {
+        referredBy = referrer._id;
+      }
     }
-  });
+
+    // Generate unique referral code
+    const newReferralCode = `REF${Date.now()}${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+
+    // Create new user
+    const user = new User({
+      email,
+      phone,
+      password,
+      firstName,
+      lastName,
+      referralCode: newReferralCode,
+      referredBy
+    });
+
+    await user.save({ session });
+    
+    // Create session
+    const userSession = await createOrUpdateSession({ userId: user._id, deviceInfo, ip }, session);
+    
+    // Generate tokens
+    const token = await generateTokens(user, deviceInfo);
+
+    // Construct full name for email
+    const fullName = `${user.firstName} ${user.lastName}`;
+
+    // Send welcome email (outside transaction - non-critical)
+    // We'll send this after commit to avoid rolling back for email failures
+    
+    // Commit the transaction
+    await session.commitTransaction();
+
+    // Now send the email after successful commit
+    // If email fails, user is still created (which is usually desired)
+    try {
+      await sendEmail(
+        user.email,
+        'Welcome to Gin by Ginoid ✨',
+        null,
+        `
+        <div style="font-family: Arial, sans-serif; color:#222; padding:20px; background:#fafafa;">
+          <table width="100%" cellspacing="0" cellpadding="0" style="max-width:600px; margin:auto; background:#ffffff; border-radius:8px; padding:30px;">
+            <tr>
+              <td align="center" style="padding-bottom:20px;">
+                <h2 style="margin:0; font-size:22px; font-weight:700; color:#000;">
+                  Welcome to Gin by Ginoid, ${fullName.toUpperCase()}!
+                </h2>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="font-size:15px; line-height:1.6; color:#444;">
+                <p>We're thrilled to welcome you to the Gin by Ginoid family!</p>
+                <p>Beauty isn't just a look — it's a lifestyle, and you're now part of a community that believes in elegance, confidence, and premium hair care experiences tailored for you.</p>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding-top:20px;">
+                <p style="font-size:15px; font-weight:600; margin-bottom:10px; color:#2d3748;">
+                  What comes next:
+                </p>
+
+                <p style="font-size:14px; line-height:1.6; color:#666;">
+                  • Early access to premium hair products <br/>
+                  • Styling tips & beauty inspiration <br/>
+                  • VIP alerts for special offers and events <br/>
+                </p>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding-top:25px; font-size:14px; color:#666;">
+                <p>We can't wait to bring out your finest look yet.</p>
+                <p>Welcome once again — stay classy, stay beautiful.</p>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="font-size:13px; line-height:1.6; color:#888; padding-top:25px; border-top:1px solid #eee;">
+                <p style="margin:0;">With grace & glamour,<br/><strong>Gin by Ginoid Team</strong></p>
+              </td>
+            </tr>
+          </table>
+        </div>
+        `
+      );
+    } catch (emailError) {
+      // Log email error but don't fail the registration
+      console.error('Failed to send welcome email:', emailError);
+      // Optionally, queue email for retry
+    }
+
+    // Remove password from response
+    const userResponse = user.toObject();
+    delete userResponse.password;
+
+    res.cookie('refreshToken', token.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'User registered successfully',
+      data: {
+        user: userResponse,
+        token: token.accessToken,
+      }
+    });
+
+  } catch (error) {
+    // Rollback transaction on any error
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    // End session
+    session.endSession();
+  }
 });
 
 // @desc    Login user
