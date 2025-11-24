@@ -46,7 +46,7 @@ app.use(helmet({
 // CORS configuration
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://hair-shop-beta.vercel.app', 'https://www.hair-shop-beta.vercel.app','https://bclassyhairs.com','bclassyhairs.com'] 
+    ? ['http://localhost:3000', 'https://www.hair-shop-beta.vercel.app','https://bclassyhairs.com','bclassyhairs.com'] 
     : ['http://localhost:3000', 'http://localhost:3001','https://hair-shop-beta.vercel.app', 'https://www.hair-shop-beta.vercel.app','https://bclassyhairs.com'],
   credentials: true
 }));
