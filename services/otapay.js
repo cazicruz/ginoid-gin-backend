@@ -18,6 +18,27 @@ const otapay = axios.create({
 })
 
 
+otapay.interceptors.response.use(
+    response => response,
+    error => {
+        if (error.response) {
+            // API returned an error response
+            const { status, data } = error.response;
+            throw apiError(
+                data.message || 'API request failed',
+                status,
+                data.code || 'API_ERROR'
+            );
+        } else if (error.request) {
+            // Request made but no response
+            throw apiError('No response from OTAPAY service', 503, 'SERVICE_UNAVAILABLE');
+        } else {
+            // Something else happened
+            throw apiError(error.message, 500, 'INTERNAL_ERROR');
+        }
+    }
+);
+
 const dataPurchase = async (network,phone,ref,data_plan,ported_number=true)=>{
     if(!network||!phone||!ref||!data_plan){
         throw apiError("credentials for data purchase in-complete",400,'KEY_PARAMETERS_MISSING');  
