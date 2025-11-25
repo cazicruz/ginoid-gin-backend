@@ -1,119 +1,103 @@
-// /c:/Users/ADMIN/Documents/ginoid-Gin/models/Transaction.js
-// Sequelize model for storing in-app and 3rd-party transactions
+const mongoose = require('mongoose');
 
-module.exports = (sequelize, DataTypes) => {
-    const Transaction = sequelize.define(
-        'Transaction',
-        {
-            id: {
-                type: DataTypes.UUID,
-                defaultValue: DataTypes.UUIDV4,
-                primaryKey: true,
-            },
+// models/Transaction.js
+const { Schema } = mongoose;
 
-            // optional relation to your users table
-            userId: {
-                type: DataTypes.UUID,
-                allowNull: true,
-                comment: 'Reference to local user (nullable for guest/third-party)',
-            },
+const transactionSchema = new Schema(
+    {
+        // user reference (nullable for guest/third-party)
+        user: { type: Schema.Types.ObjectId, ref: 'User', index: true },
 
-            // type/channel of the transaction
-            channel: {
-                type: DataTypes.ENUM('in_app', 'third_party'),
-                allowNull: false,
-                defaultValue: 'in_app',
-            },
-
-            // provider info for third-party (e.g., Stripe, PayPal)
-            provider: {
-                type: DataTypes.STRING(64),
-                allowNull: true,
-            },
-            providerTransactionId: {
-                type: DataTypes.STRING(128),
-                allowNull: true,
-                comment: 'ID returned by 3rd-party provider',
-            },
-
-            // basic monetary fields (store as decimal to avoid precision loss)
-            amount: {
-                type: DataTypes.DECIMAL(20, 8),
-                allowNull: false,
-                comment: 'Gross amount (positive for credits to platform, negative for debits)',
-            },
-            currency: {
-                type: DataTypes.STRING(3),
-                allowNull: false,
-                defaultValue: 'USD',
-            },
-            feeAmount: {
-                type: DataTypes.DECIMAL(20, 8),
-                allowNull: true,
-            },
-            netAmount: {
-                type: DataTypes.DECIMAL(20, 8),
-                allowNull: true,
-                comment: 'amount - feeAmount (store for convenience or compute on write)',
-            },
-
-            // direction & business meaning
-            direction: {
-                type: DataTypes.ENUM('credit', 'debit'),
-                allowNull: false,
-            },
-            purpose: {
-                type: DataTypes.STRING(128),
-                allowNull: true,
-                comment: 'business purpose e.g. purchase, refund, payout',
-            },
-
-            // lifecycle / status
-            status: {
-                type: DataTypes.ENUM('pending', 'completed', 'failed', 'refunded', 'cancelled'),
-                allowNull: false,
-                defaultValue: 'pending',
-            },
-
-            // raw payloads & extra metadata
-            metadata: {
-                type: DataTypes.JSONB || DataTypes.JSON,
-                allowNull: true,
-                comment: 'free-form JSON for app-specific data',
-            },
-            providerResponse: {
-                type: DataTypes.JSONB || DataTypes.JSON,
-                allowNull: true,
-                comment: 'raw response from provider (if applicable)',
-            },
-
-            processedAt: {
-                type: DataTypes.DATE,
-                allowNull: true,
-            },
+        // channel/type
+        channel: {
+            type: String,
+            enum: ['in_app', 'third_party'],
+            required: true,
+            default: 'in_app',
+            index: true,
         },
-        {
-            tableName: 'transactions',
-            underscored: true,
-            timestamps: true,
-            indexes: [
-                { fields: ['user_id'] },
-                { fields: ['status'] },
-                { fields: ['channel'] },
-                {
-                    unique: true,
-                    fields: ['provider', 'provider_transaction_id'],
-                    where: { provider: { [sequelize.Sequelize.Op.ne]: null } },
-                    name: 'ux_provider_provider_txn_id',
-                },
-            ],
+
+        // third-party provider info
+        provider: { type: String, maxlength: 64, required: false },
+        providerTransactionId: { type: String, maxlength: 128, required: false },
+
+        // monetary fields (Decimal128 to preserve precision)
+        amount: { type: Schema.Types.Decimal128, required: true }, // gross amount
+        currency: { type: String, required: true, default: 'NGN', maxlength: 3 },
+        feeAmount: { type: Schema.Types.Decimal128, required: false },
+        netAmount: { type: Schema.Types.Decimal128, required: false }, // amount - feeAmount
+
+        // direction & business meaning
+        direction: { type: String, enum: ['credit', 'debit'], required: true },
+        purpose: { type: String, maxlength: 128, required: false },
+
+        // lifecycle / status
+        status: {
+            type: String,
+            enum: ['pending', 'completed', 'failed', 'refunded', 'cancelled'],
+            required: true,
+            default: 'pending',
+            index: true,
+        },
+
+        // raw payloads & extra metadata
+        metadata: { type: Schema.Types.Mixed, required: false },
+        providerResponse: { type: Schema.Types.Mixed, required: false },
+
+        processedAt: { type: Date, required: false },
+    },
+    {
+        collection: 'transactions',
+        timestamps: true,
+    }
+);
+
+// compute netAmount if missing before save
+transactionSchema.pre('save', function (next) {
+    try {
+        const doc = this;
+
+        function toNumber(val) {
+            if (val == null) return 0;
+            const s = typeof val === 'string' ? val : val.toString();
+            const n = parseFloat(s);
+            return Number.isFinite(n) ? n : 0;
         }
-    );
 
-    Transaction.associate = (models) => {
-        // Example associations - enable if you have a User model
-        // Transaction.belongsTo(models.User, { foreignKey: 'userId', as: 'user' });
-    };
+        if (doc.netAmount == null && doc.amount != null) {
+            const amt = toNumber(doc.amount);
+            const fee = toNumber(doc.feeAmount);
+            const net = amt - fee;
+            doc.netAmount = mongoose.Types.Decimal128.fromString(net.toString());
+        }
 
-    return Transaction;
-};
+        // set processedAt when transitioning to completed and not previously set
+        if (doc.isModified('status') && doc.status === 'completed' && !doc.processedAt) {
+            doc.processedAt = new Date();
+        }
+
+        next();
+    } catch (err) {
+        next(err);
+    }
+});
+
+// indexes
+transactionSchema.index({ user: 1 });
+transactionSchema.index({ status: 1 });
+transactionSchema.index({ channel: 1 });
+
+// unique provider + providerTransactionId only when provider & providerTransactionId are present
+transactionSchema.index(
+    { provider: 1, providerTransactionId: 1 },
+    {
+        unique: true,
+        partialFilterExpression: {
+            provider: { $exists: true, $ne: null },
+            providerTransactionId: { $exists: true, $ne: null },
+        },
+        name: 'ux_provider_provider_txn_id',
+    }
+);
+
+module.exports = mongoose.model('Transaction', transactionSchema);

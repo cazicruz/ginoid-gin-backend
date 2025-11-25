@@ -6,6 +6,8 @@ const { authenticateToken } = require('../../middleware/auth');
 const authRoutes = require('./auth');
 const webhookRoutes = require('./webHooks');
 const adminRoutes = require('./admin');
+const otaPayRoutes = require('./otapayRoutes');
+const dataplanRoutes = require('./dataplan');
 
 /**
  * @swagger
@@ -323,6 +325,8 @@ router.get('/', (req, res) => {
 router.use('/auth', authRoutes);
 router.use('/hooks', webhookRoutes);
 router.use('/admin',adminRoutes);
+router.use('/otapay',otaPayRoutes);
+router.use('/dataplan',dataplanRoutes);
 
 // 404 handler for API routes
 router.use('*', (req, res) => {

@@ -5,7 +5,7 @@ const { authenticateToken ,requireAdmin} = require('../../middleware/auth');
 
 
 router.use(authenticateToken);
-// router.use(requireAdmin);
+router.use(requireAdmin);
 
 // router.get('/stats',AdminController.getAdminStats);
 router.get('/users',AdminController.getAllUsers);
