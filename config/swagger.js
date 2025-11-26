@@ -157,18 +157,6 @@ const options = {
         description: 'User authentication and authorization endpoints'
       },
       {
-        name: 'Product',
-        description: 'Product management and catalog endpoints'
-      },
-      {
-        name: 'Orders',
-        description: 'Order management and payments'
-      },
-      {
-        name: 'Cart',
-        description: 'Cart management endpoints'
-      },
-      {
         name: 'Health',
         description: 'API health and status endpoints'
       }

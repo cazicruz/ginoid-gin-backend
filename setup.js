@@ -1,185 +1,136 @@
-// const mongoose = require('mongoose');
-// const User = require('./models/User');
-// const Provider = require('./models/Provider');
-// require('dotenv').config();
+const mongoose = require('mongoose');
+const DataPlan = require('./models/DataPlan');
+require('dotenv').config();
 
-// const setupDatabase = async () => {
-//   try {
-//     console.log('🚀 Setting up VTU Application Database...\n');
+const parseDataPlan = (planString) => {
+  // Parse "MTN 500MB (SME) (30 days)" into components
+  const networkMatch = planString.match(/^(MTN|AIRTEL|9MOBILE|GLO)/);
+  const sizeMatch = planString.match(/(\d+\.?\d*\s?(MB|GB))/);
+  const typeMatch = planString.match(/\((SME|Corporate|Gifting)\)/);
+  const validityMatch = planString.match(/\((\d+)\s+days?\)/);
 
-//     // Connect to MongoDB
-//     const mongoURI = process.env.MONGODB_URI;
-//     if (!mongoURI) {
-//       console.error('❌ MONGODB_URI not found in environment variables');
-//       console.log('📝 Please create a .env file with your MongoDB connection string');
-//       process.exit(1);
-//     }
+  return {
+    network: networkMatch ? networkMatch[1] : null,
+    size: sizeMatch ? sizeMatch[1] : null,
+    type: typeMatch ? typeMatch[1] : null,
+    validity: validityMatch ? parseInt(validityMatch[1]) : null
+  };
+};
 
-//     await mongoose.connect(mongoURI, {
-//       useNewUrlParser: true,
-//       useUnifiedTopology: true,
-//     });
+const dataPlanData = [
+  { planId: 57, plan: "MTN 500MB (SME) (30 days)", user: 329 },
+  { planId: 58, plan: "MTN 1GB (SME) (30 days)", user: 655 },
+  { planId: 69, plan: "MTN 2GB (SME) (30 days)", user: 1308 },
+  { planId: 70, plan: "MTN 3GB (SME) (30 days)", user: 1961 },
+  { planId: 71, plan: "MTN 5GB (SME) (30 days)", user: 3315 },
+  { planId: 72, plan: "MTN 10GB (SME) (30 days)", user: 6630 },
+  { planId: 75, plan: "MTN 150.0 MB (Corporate) (30 days)", user: 60 },
+  { planId: 76, plan: "MTN 250.0 MB (Corporate) (30 days)", user: 87 },
+  { planId: 77, plan: "MTN 500.0 MB (Corporate) (30 days)", user: 170 },
+  { planId: 78, plan: "MTN 1.0 GB (Corporate) (30 days)", user: 339 },
+  { planId: 85, plan: "MTN 2.0 GB (Corporate) (30 days)", user: 677 },
+  { planId: 86, plan: "MTN 3.0 GB (Corporate) (30 days)", user: 1016 },
+  { planId: 87, plan: "MTN 5.0 GB (Corporate) (30 days)", user: 1692 },
+  { planId: 88, plan: "MTN 20.0 GB (Corporate) (30 days)", user: 6768 },
+  { planId: 91, plan: "AIRTEL 500.0 MB (Corporate) (7 days)", user: 530 },
+  { planId: 92, plan: "AIRTEL 1.0 GB (Corporate) (7 days)", user: 828 },
+  { planId: 94, plan: "AIRTEL 2.0 GB (Corporate) (30 days)", user: 1540 },
+  { planId: 95, plan: "AIRTEL 3.0 GB (Corporate) (30 days)", user: 2048 },
+  { planId: 98, plan: "9MOBILE 500.0 MB (Corporate) (30 days)", user: 154 },
+  { planId: 99, plan: "9MOBILE 1.0 GB (Corporate) (30 days)", user: 305 },
+  { planId: 100, plan: "9MOBILE 1.5 GB (Corporate) (30 days)", user: 457 },
+  { planId: 101, plan: "9MOBILE 2.0 GB (Corporate) (30 days)", user: 610 },
+  { planId: 102, plan: "9MOBILE 3.0 GB (Corporate) (30 days)", user: 915 },
+  { planId: 103, plan: "9MOBILE 4.0 GB (Corporate) (30 days)", user: 1220 },
+  { planId: 105, plan: "9MOBILE 5.0 GB (Corporate) (30 days)", user: 1525 },
+  { planId: 108, plan: "GLO 200.0 MB (Corporate) (14 days)", user: 83 },
+  { planId: 109, plan: "GLO 500.0 MB (Corporate) (30 days)", user: 206 },
+  { planId: 110, plan: "GLO 1.0 GB (Corporate) (30 days)", user: 409 },
+  { planId: 111, plan: "GLO 2.0 GB (Corporate) (30 days)", user: 813 },
+  { planId: 112, plan: "GLO 3.0 GB (Corporate) (30 days)", user: 1220 },
+  { planId: 113, plan: "GLO 5.0 GB (Corporate) (30 days)", user: 2034 },
+  { planId: 114, plan: "GLO 10.0 GB (Corporate) (30 days)", user: 4068 },
+  { planId: 115, plan: "AIRTEL 10.0 GB (Corporate) (30 days)", user: 4082 },
+  { planId: 118, plan: "MTN 110.0 MB (Gifting) (1 days)", user: 101 },
+  { planId: 121, plan: "AIRTEL 25.0 GB (Corporate) (30 days)", user: 8150 },
+  { planId: 122, plan: "AIRTEL 150.0 MB (SME) (1 days)", user: 58 },
+  { planId: 125, plan: "AIRTEL 1.0 GB (SME) (3 days)", user: 345 },
+  { planId: 127, plan: "AIRTEL 3.0 GB (SME) (7 days)", user: 1031 },
+  { planId: 128, plan: "AIRTEL 7.0 GB (SME) (7 days)", user: 2048 },
+  { planId: 129, plan: "GLO 750 MB (SME) (1 days)", user: 194 },
+  { planId: 130, plan: "GLO 1.5 GB (SME) (1 days)", user: 295 },
+  { planId: 131, plan: "GLO 2.5 GB (SME) (2 days)", user: 482 },
+  { planId: 132, plan: "GLO 10.0 GB (SME) (7 days)", user: 1906 },
+  { planId: 133, plan: "AIRTEL 10.0 GB (SME) (30 days)", user: 3065 },
+  { planId: 135, plan: "MTN 40.0 GB (Corporate) (30 days)", user: 13056},
+  { planId: 141, plan: "MTN 500.0 MB (Gifting) (1 days)", user: 345},
+  { planId: 142, plan: "MTN 1.0 GB (Gifting) (1 days)", user: 493 },
+  { planId: 144, plan: "MTN 2.5 GB (Gifting) (2 days)", user: 896 },
+  { planId: 145, plan: "MTN 3.2 GB (Gifting) (2 days)", user: 996 },
+  { planId: 146, plan: "MTN 6.0 GB (Gifting) (7 days)", user: 2466 },
+  { planId: 147, plan: "MTN 7.0 GB (Gifting) (30 days)", user: 3452 },
+  { planId: 148, plan: "MTN 1.5 GB (Gifting) (2 days)", user: 591 },
+  { planId: 149, plan: "MTN 1.0 GB (Gifting) (7 days)", user: 789 },
+  { planId: 150, plan: "MTN 2.0 GB (Gifting) (30 days)", user: 1479 },
+  { planId: 151, plan: "MTN 2.7 GB (Gifting) (30 days)", user: 1972 },
+  { planId: 152, plan: "MTN 3.5 GB (Gifting) (30 days)", user: 2466 },
+  { planId: 153, plan: "MTN 10.0 GB (Gifting) (30 days)", user: 4439 },
+  { planId: 154, plan: "MTN 12.5 GB (Gifting) (30 days)", user: 5425 },
+  { planId: 155, plan: "MTN 14.5 GB (Gifting) (30 days)", user: 4932 },
+  { planId: 156, plan: "MTN 16.5 GB (Gifting) (30 days)", user: 6412 },
+  { planId: 157, plan: "MTN 40.0 GB (Gifting) (60 days)", user: 8969 },
+  { planId: 158, plan: "MTN 36.0 GB (Gifting) (30 days)", user: 10851 },
+  { planId: 159, plan: "MTN 75.0 GB (Gifting) (30 days)", user: 17756 },
+  { planId: 160, plan: "MTN 90.0 GB (Gifting) (60 days)", user: 24916 },
+  { planId: 161, plan: "MTN 165.0 GB (Gifting) (30 days)", user: 34527 },
+  { planId: 162, plan: "MTN 150.0 GB (Gifting) (60 days)", user: 39459 },
+  { planId: 163, plan: "MTN 200.0 GB (Gifting) (30 days)", user: 49324 },
+  { planId: 164, plan: "MTN 200.0 GB (Gifting) (60 days)", user: 49833 },
+  { planId: 165, plan: "MTN 250.0 GB (Gifting) (30 days)", user: 54256 },
+  { planId: 166, plan: "MTN 480.0 GB (Gifting) (90 days)", user: 88784 },
+  { planId: 167, plan: "AIRTEL 60.0 GB (Corporate) (30 days)", user: 15269 },
+  { planId: 168, plan: "9MOBILE 10.0 GB (Corporate) (30 days)", user: 3051},
+  { planId: 169, plan: "9MOBILE 20.0 GB (Corporate) (30 days)", user: 6102 },
+  { planId: 170, plan: "GLO 1.0 GB (Gifting) (3 days)", user: 274},
+  { planId: 171, plan: "GLO 3.0 GB (Gifting) (3 days)", user: 823},
+  { planId: 172, plan: "GLO 5.0 GB (Gifting) (3 days)", user: 1372 },
+  { planId: 173, plan: "GLO 1.0 GB (Gifting) (7 days)", user: 320 },
+  { planId: 174, plan: "GLO 3.0 GB (Gifting) (7 days)", user: 961 },
+  { planId: 175, plan: "GLO 5.0 GB (Gifting) (7 days)", user: 1601 },
+];
 
-//     console.log('✅ Connected to MongoDB\n');
+async function seedDataPlans() {
+  try {
+    await mongoose.connect(process.env.MONGODB_URI);
+    console.log('Connected to MongoDB');
 
-//     // Clear existing data (optional - comment out if you want to keep existing data)
-//     console.log('🧹 Clearing existing data...');
-//     await User.deleteMany({});
-//     await Provider.deleteMany({});
-//     console.log('✅ Existing data cleared\n');
+    // Clear existing plans (optional)
+    await DataPlan.deleteMany({});
+    console.log('Cleared existing plans');
 
-//     // Create sample providers
-//     console.log('📡 Creating sample VTU providers...');
-    
-//     const providers = [
-//       {
-//         name: 'VTPass',
-//         code: 'VTPASS',
-//         type: 'multipurpose',
-//         services: [
-//           'mtn_airtime', 'airtel_airtime', 'glo_airtime', '9mobile_airtime',
-//           'mtn_data', 'airtel_data', 'glo_data', '9mobile_data',
-//           'dstv', 'gotv', 'startimes', 'showmax',
-//           'ikeja_electric', 'eko_electric', 'kano_electric', 'kaduna_electric'
-//         ],
-//         description: 'Leading VTU service provider in Nigeria',
-//         apiConfig: {
-//           baseUrl: 'https://vtpass.com/api',
-//           apiKey: 'your_vtpass_api_key',
-//           secretKey: 'your_vtpass_secret_key',
-//           timeout: 30000
-//         },
-//         pricing: {
-//           commission: 2.5,
-//           markup: 0,
-//           minimumAmount: 50,
-//           maximumAmount: 50000,
-//           fee: 0
-//         },
-//         dataPlans: [
-//           {
-//             name: 'MTN 1GB',
-//             size: '1GB',
-//             validity: '30 days',
-//             price: 250,
-//             providerPrice: 245,
-//             isActive: true,
-//             description: 'MTN 1GB data plan valid for 30 days'
-//           },
-//           {
-//             name: 'Airtel 2GB',
-//             size: '2GB',
-//             validity: '30 days',
-//             price: 450,
-//             providerPrice: 440,
-//             isActive: true,
-//             description: 'Airtel 2GB data plan valid for 30 days'
-//           }
-//         ],
-//         cablePackages: [
-//           {
-//             name: 'DSTV Premium',
-//             code: 'DSTV_PREMIUM',
-//             price: 24500,
-//             providerPrice: 24000,
-//             isActive: true,
-//             description: 'DSTV Premium package with all channels'
-//           },
-//           {
-//             name: 'GOTV Max',
-//             code: 'GOTV_MAX',
-//             price: 8200,
-//             providerPrice: 8000,
-//             isActive: true,
-//             description: 'GOTV Max package'
-//           }
-//         ]
-//       },
-//       {
-//         name: 'QuickTeller',
-//         code: 'QUICKTELLER',
-//         type: 'multipurpose',
-//         services: [
-//           'mtn_airtime', 'airtel_airtime', 'glo_airtime', '9mobile_airtime',
-//           'mtn_data', 'airtel_data', 'glo_data', '9mobile_data'
-//         ],
-//         description: 'Reliable airtime and data provider',
-//         apiConfig: {
-//           baseUrl: 'https://quickteller.com/api',
-//           apiKey: 'your_quickteller_api_key',
-//           secretKey: 'your_quickteller_secret_key',
-//           timeout: 25000
-//         },
-//         pricing: {
-//           commission: 2.0,
-//           markup: 0,
-//           minimumAmount: 100,
-//           maximumAmount: 100000,
-//           fee: 0
-//         }
-//       }
-//     ];
+    // Transform and insert data
+    const plans = dataPlanData.map(item => {
+      const parsed = parseDataPlan(item.plan);
+      return {
+        planId: item.planId,
+        plan: item.plan,
+        network: parsed.network,
+        type: parsed.type,
+        size: parsed.size,
+        validity: parsed.validity,
+        price: item.user,
+         isActive: true
+      };
+    });
 
-//     for (const providerData of providers) {
-//       const provider = new Provider(providerData);
-//       await provider.save();
-//       console.log(`✅ Created provider: ${provider.name}`);
-//     }
+    await DataPlan.insertMany(plans);
+    console.log(`Successfully seeded ${plans.length} data plans`);
 
-//     // Create sample admin user
-//     console.log('\n👤 Creating sample admin user...');
-//     const adminUser = new User({
-//       firstName: 'Admin',
-//       lastName: 'User',
-//       email: 'admin@vtuapp.com',
-//       phone: '08012345678',
-//       password: 'Admin123!',
-//       role: 'admin',
-//       isVerified: true,
-//       referralCode: 'REFADMIN001'
-//     });
+    await mongoose.connection.close();
+  } catch (error) {
+    console.error('Error seeding data plans:', error);
+    process.exit(1);
+  }
+}
 
-//     await adminUser.save();
-//     console.log('✅ Created admin user: admin@vtuapp.com / Admin123!');
-
-//     // Create sample regular user
-//     console.log('\n👤 Creating sample regular user...');
-//     const regularUser = new User({
-//       firstName: 'John',
-//       lastName: 'Doe',
-//       email: 'john.doe@example.com',
-//       phone: '08087654321',
-//       password: 'Password123!',
-//       role: 'user',
-//       isVerified: true,
-//       wallet: {
-//         balance: 10000,
-//         currency: 'NGN'
-//       },
-//       referralCode: 'REFUSER001'
-//     });
-
-//     await regularUser.save();
-//     console.log('✅ Created regular user: john.doe@example.com / Password123!');
-
-//     console.log('\n🎉 Database setup completed successfully!');
-//     console.log('\n📋 Sample credentials:');
-//     console.log('   Admin: admin@vtuapp.com / Admin123!');
-//     console.log('   User: john.doe@example.com / Password123!');
-//     console.log('\n🚀 You can now start the application with: npm run dev');
-
-//   } catch (error) {
-//     console.error('❌ Setup failed:', error.message);
-//     process.exit(1);
-//   } finally {
-//     await mongoose.disconnect();
-//     console.log('\n🔌 Disconnected from MongoDB');
-//   }
-// };
-
-// // Run setup if this file is executed directly
-// if (require.main === module) {
-//   setupDatabase();
-// }
-
-// module.exports = setupDatabase; 
+seedDataPlans();
