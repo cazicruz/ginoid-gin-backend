@@ -10,6 +10,7 @@ const { generateOTP, storeEmailVerificationOTP, verifyEmailVerificationOTP } = r
 const sendEmail = require('../utils/sendEmail');
 const apiError = require('../utils/apiError');
 const catchAsync = require('../utils/catchAsync');
+const mongoose = require('mongoose');
 
 
 // @desc    Register a new user
