@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const uuid = require('uuid');
 const {ApiError} = require('../utils/apiError');
 
 const userSchema = new mongoose.Schema({
@@ -13,6 +14,11 @@ const userSchema = new mongoose.Schema({
   },
   firstName:{
     type:String,
+  },
+  ginId:{
+    type:String,
+    unique: true,
+    default: uuid.v4
   },
   lastName:{
     type:String,

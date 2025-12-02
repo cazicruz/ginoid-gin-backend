@@ -8,6 +8,7 @@ const webhookRoutes = require('./webHooks');
 const adminRoutes = require('./admin');
 const otaPayRoutes = require('./otapayRoutes');
 const dataplanRoutes = require('./dataplan');
+const walletTransferRoutes = require('./walletTransfer');
 
 /**
  * @swagger
@@ -327,6 +328,7 @@ router.use('/hooks', webhookRoutes);
 router.use('/admin',adminRoutes);
 router.use('/otapay',otaPayRoutes);
 router.use('/dataplan',dataplanRoutes);
+router.use('/wallet',walletTransferRoutes);
 
 // 404 handler for API routes
 router.use('*', (req, res) => {
